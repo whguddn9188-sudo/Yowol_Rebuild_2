@@ -1985,7 +1985,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d82d10b0e577a6c40bd72f541850100f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LightFlicker2D
-  intensityDelta: 1.6
+  intensityDelta: 1.2
   speed: 0.3
 --- !u!114 &835276580
 MonoBehaviour:
@@ -2008,7 +2008,7 @@ MonoBehaviour:
     rid: 5772854159267856386
   m_FalloffIntensity: 0.5
   m_Color: {r: 0.7688679, g: 0.9752359, b: 1, a: 1}
-  m_Intensity: 1.5
+  m_Intensity: 3
   m_LightVolumeIntensity: 1
   m_LightVolumeEnabled: 0
   m_ApplyToSortingLayers: 00000000i

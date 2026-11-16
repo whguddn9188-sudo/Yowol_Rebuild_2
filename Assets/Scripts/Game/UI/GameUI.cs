@@ -249,14 +249,21 @@ namespace Yowol
         /// <summary>Small status line under the boss bar, e.g. "사슬 2/3" (empty hides it).</summary>
         public void SetCounter(string text) => counterText.text = text ?? "";
 
-        public void ShowBanner(string title, string sub, float hold = 2.2f) => StartCoroutine(BannerRoutine(title, sub, hold));
+        public void ShowBanner(string title, string sub, float hold = 0.65f) => StartCoroutine(BannerRoutine(title, sub, hold));
 
         IEnumerator BannerRoutine(string title, string sub, float hold)
         {
-            bannerTitle.text = title; bannerSub.text = sub;
-            yield return FadeGroup(banner, 0f, 1f, 0.6f);
+            bannerTitle.text = title;
+            bannerSub.text = sub;
+
+            // 0.15초 동안 서서히 나타남
+            yield return FadeGroup(banner, 0f, 1f, 0.15f);
+
+            // 0.65초 동안 제목 유지
             yield return new WaitForSecondsRealtime(hold);
-            yield return FadeGroup(banner, 1f, 0f, 0.8f);
+
+            // 0.2초 동안 서서히 사라짐
+            yield return FadeGroup(banner, 1f, 0f, 0.4f);
         }
 
         public void ShowWarning(string text, float hold = 2.2f)
