@@ -23,3 +23,6 @@
 *.sln*
 .vs/
 
+
+# scratch from Claude session (safe to delete)
+/_to_delete/

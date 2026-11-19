@@ -60,6 +60,9 @@ namespace Yowol
             }
             else if (player != null && spawnPoint != null) player.transform.position = spawnPoint.position;
 
+            // Extra enemies defined in Assets/Resources/Tuning/GameTuning.json ("spawns"), e.g. the ranged lanterns.
+            StageSpawns.SpawnFor(gameObject.scene.name);
+
             var cam = Camera.main;
             if (cam != null)
             {

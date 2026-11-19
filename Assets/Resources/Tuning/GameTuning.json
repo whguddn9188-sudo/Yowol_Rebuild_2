@@ -1,0 +1,423 @@
+{
+    "version": 1,
+    "hud": {
+        "skillSlotSize": 124.0,
+        "skillIconSize": 104.0,
+        "skillSlotSpacing": 140.0,
+        "skillOffset": {
+            "x": -40.0,
+            "y": 48.0
+        },
+        "keyFontSize": 26.0,
+        "timerFontSize": 34.0,
+        "nameFontSize": 20.0,
+        "showSkillName": true,
+        "cooldownIconBrightness": 0.45
+    },
+    "skillFx": {
+        "scale": 2.2,
+        "hitboxScale": 1.0
+    },
+    "weapons": [
+        {
+            "id": "Sword",
+            "icon": "UI/WeaponIcons/Sword",
+            "attackWindup": 0.0,
+            "windupFrame": 0,
+            "windupMoveMultiplier": 0.0,
+            "windupFirstComboOnly": false,
+            "windupTint": true,
+            "windupColor": {
+                "r": 0.65,
+                "g": 0.8,
+                "b": 1.0,
+                "a": 1.0
+            },
+            "skill1Icon": "UI/SkillIcons/Sword_E",
+            "skill2Icon": "UI/SkillIcons/Sword_Q"
+        },
+        {
+            "id": "Bow",
+            "icon": "UI/WeaponIcons/Bow",
+            "attackWindup": 0.0,
+            "windupFrame": 0,
+            "windupMoveMultiplier": 0.0,
+            "windupFirstComboOnly": false,
+            "windupTint": true,
+            "windupColor": {
+                "r": 0.65,
+                "g": 0.8,
+                "b": 1.0,
+                "a": 1.0
+            },
+            "skill1Icon": "UI/SkillIcons/Bow_E",
+            "skill2Icon": "UI/SkillIcons/Bow_Q"
+        },
+        {
+            "id": "GreatSword",
+            "icon": "UI/WeaponIcons/GreatSword",
+            "attackWindup": 0.35,
+            "windupFrame": 0,
+            "windupMoveMultiplier": 0.0,
+            "windupFirstComboOnly": false,
+            "windupTint": true,
+            "windupColor": {
+                "r": 0.65,
+                "g": 0.8,
+                "b": 1.0,
+                "a": 1.0
+            },
+            "skill1Icon": "UI/SkillIcons/GreatSword_E",
+            "skill2Icon": "UI/SkillIcons/GreatSword_Q"
+        }
+    ],
+    "lantern": {
+        "maxHp": 90,
+        "contactDamage": 0,
+        "knockbackResist": 0.35,
+        "bodySize": {
+            "x": 1.0,
+            "y": 2.2
+        },
+        "hoverHeight": 0.3,
+        "bobAmplitude": 0.08,
+        "bobSpeed": 2.4,
+        "visualScale": 1.0,
+        "unlit": false,
+        "glowColor": {
+            "r": 0.35,
+            "g": 1.0,
+            "b": 0.9,
+            "a": 1.0
+        },
+        "glowIntensity": 0.9,
+        "glowRadius": 2.6,
+        "detectRange": 11.0,
+        "verticalSight": 3.5,
+        "attackRange": 9.0,
+        "preferredRange": 6.5,
+        "minRange": 3.5,
+        "moveSpeed": 1.6,
+        "retreatSpeed": 2.2,
+        "patrolSpeed": 0.6,
+        "patrolRange": 1.5,
+        "attackCooldown": 2.6,
+        "firstAttackDelay": 1.0,
+        "recoverTime": 0.35,
+        "heavyHitInterruptsWindup": true,
+        "windupTint": {
+            "r": 0.55,
+            "g": 1.0,
+            "b": 0.95,
+            "a": 1.0
+        },
+        "fireFrame": 1,
+        "muzzleOffset": {
+            "x": 0.65,
+            "y": 1.05
+        },
+        "flameOffset": {
+            "x": 0.35,
+            "y": 0.0
+        },
+        "flameScale": 1.0,
+        "projectileDamage": 10,
+        "projectileSpeed": 7.5,
+        "projectileLifetime": 2.6,
+        "projectileScale": 1.0,
+        "projectileHitSize": {
+            "x": 0.55,
+            "y": 0.45
+        },
+        "projectileKnockback": 3.0,
+        "aimAtPlayer": true,
+        "maxAimAngle": 20.0,
+        "introLines": [
+            "저건 등불 혼령이에요. 멀리서 청록 불꽃을 던져요!",
+            "몸이 빛나며 기울면 곧 쏩니다. 점프로 피하거나, 대검 반격(E)으로 받아칠 수 있어요."
+        ]
+    },
+    "animations": [
+        {
+            "name": "Lantern_Idle",
+            "library": "Lantern",
+            "sheet": "Enemies/Lantern/Lantern_Idle_Sheet",
+            "cols": 4,
+            "rows": 2,
+            "start": 0,
+            "count": 8,
+            "loop": true,
+            "durations": [
+                0.15
+            ],
+            "ppu": 180.0,
+            "pivot": {
+                "x": 0.525,
+                "y": 0.1
+            }
+        },
+        {
+            "name": "Lantern_Windup",
+            "library": "Lantern",
+            "sheet": "Enemies/Lantern/Lantern_Attack_Sheet",
+            "cols": 4,
+            "rows": 3,
+            "start": 0,
+            "count": 4,
+            "loop": false,
+            "durations": [
+                0.16,
+                0.16,
+                0.18,
+                0.22
+            ],
+            "ppu": 148.0,
+            "pivot": {
+                "x": 0.53,
+                "y": 0.16
+            }
+        },
+        {
+            "name": "Lantern_Attack",
+            "library": "Lantern",
+            "sheet": "Enemies/Lantern/Lantern_Attack_Sheet",
+            "cols": 4,
+            "rows": 3,
+            "start": 4,
+            "count": 8,
+            "loop": false,
+            "durations": [
+                0.07,
+                0.06,
+                0.09,
+                0.09,
+                0.1,
+                0.12,
+                0.14,
+                0.28
+            ],
+            "ppu": 148.0,
+            "pivot": {
+                "x": 0.53,
+                "y": 0.16
+            }
+        },
+        {
+            "name": "Lantern_Death",
+            "library": "Lantern",
+            "sheet": "Enemies/Lantern/Lantern_Death_Sheet",
+            "cols": 4,
+            "rows": 2,
+            "start": 0,
+            "count": 8,
+            "loop": false,
+            "durations": [
+                0.08,
+                0.08,
+                0.1,
+                0.1,
+                0.14,
+                0.16,
+                0.18,
+                0.6
+            ],
+            "ppu": 180.0,
+            "pivot": {
+                "x": 0.505,
+                "y": 0.08
+            }
+        },
+        {
+            "name": "Lantern_Projectile",
+            "library": "FX",
+            "sheet": "Enemies/Lantern/Lantern_Projectile_Sheet",
+            "cols": 4,
+            "rows": 3,
+            "start": 0,
+            "count": 12,
+            "loop": true,
+            "durations": [
+                0.1
+            ],
+            "ppu": 240.0,
+            "pivot": {
+                "x": 0.75,
+                "y": 0.47
+            }
+        },
+        {
+            "name": "Lantern_FlameSweep",
+            "library": "FX",
+            "sheet": "Enemies/Lantern/Lantern_FlameSweep_Sheet",
+            "cols": 4,
+            "rows": 2,
+            "start": 0,
+            "count": 8,
+            "loop": false,
+            "durations": [
+                0.06,
+                0.06,
+                0.06,
+                0.09,
+                0.09,
+                0.09,
+                0.1,
+                0.35
+            ],
+            "ppu": 230.0,
+            "pivot": {
+                "x": 0.5,
+                "y": 0.5
+            }
+        }
+    ],
+    "spawns": [
+        {
+            "scene": "Stage1",
+            "enemy": "Lantern",
+            "x": 4.0,
+            "y": -10.43,
+            "snapToGround": true
+        },
+        {
+            "scene": "Stage1",
+            "enemy": "Lantern",
+            "x": 31.5,
+            "y": -10.43,
+            "snapToGround": true
+        },
+        {
+            "scene": "Stage2",
+            "enemy": "Lantern",
+            "x": 81.0,
+            "y": -10.02,
+            "snapToGround": true
+        },
+        {
+            "scene": "Stage2",
+            "enemy": "Lantern",
+            "x": 102.5,
+            "y": -10.02,
+            "snapToGround": true
+        },
+        {
+            "scene": "Stage2",
+            "enemy": "Lantern",
+            "x": 123.5,
+            "y": -10.02,
+            "snapToGround": true
+        },
+        {
+            "scene": "Stage3",
+            "enemy": "Reaper",
+            "x": 26.0,
+            "y": 2.55,
+            "snapToGround": true
+        },
+        {
+            "scene": "Stage3",
+            "enemy": "Lantern",
+            "x": 46.5,
+            "y": 2.55,
+            "snapToGround": true
+        },
+        {
+            "scene": "Stage3",
+            "enemy": "Reaper",
+            "x": 57.0,
+            "y": 0.0,
+            "snapToGround": true
+        },
+        {
+            "scene": "Stage3",
+            "enemy": "Reaper",
+            "x": 80.5,
+            "y": 0.0,
+            "snapToGround": true
+        },
+        {
+            "scene": "Stage3",
+            "enemy": "Lantern",
+            "x": 95.5,
+            "y": 6.5,
+            "snapToGround": true
+        },
+        {
+            "scene": "Stage3",
+            "enemy": "Reaper",
+            "x": 115.0,
+            "y": 6.0,
+            "snapToGround": true
+        },
+        {
+            "scene": "Stage3",
+            "enemy": "Reaper",
+            "x": 138.0,
+            "y": 0.9,
+            "snapToGround": true
+        },
+        {
+            "scene": "Stage3",
+            "enemy": "Lantern",
+            "x": 144.0,
+            "y": 0.9,
+            "snapToGround": true
+        },
+        {
+            "scene": "Stage3",
+            "enemy": "Reaper",
+            "x": 170.0,
+            "y": 2.9,
+            "snapToGround": true
+        },
+        {
+            "scene": "Stage3",
+            "enemy": "Lantern",
+            "x": 206.0,
+            "y": 5.6,
+            "snapToGround": true
+        },
+        {
+            "scene": "Stage3",
+            "enemy": "Reaper",
+            "x": 229.5,
+            "y": 5.6,
+            "snapToGround": true
+        },
+        {
+            "scene": "Stage3",
+            "enemy": "Reaper",
+            "x": 253.5,
+            "y": 7.6,
+            "snapToGround": true
+        },
+        {
+            "scene": "Stage3",
+            "enemy": "Lantern",
+            "x": 286.5,
+            "y": 6.4,
+            "snapToGround": true
+        },
+        {
+            "scene": "Stage3",
+            "enemy": "Reaper",
+            "x": 305.5,
+            "y": 4.4,
+            "snapToGround": true
+        },
+        {
+            "scene": "Stage3",
+            "enemy": "Reaper",
+            "x": 327.0,
+            "y": 9.4,
+            "snapToGround": true
+        },
+        {
+            "scene": "Stage3",
+            "enemy": "Lantern",
+            "x": 345.5,
+            "y": 9.4,
+            "snapToGround": true
+        }
+    ]
+}

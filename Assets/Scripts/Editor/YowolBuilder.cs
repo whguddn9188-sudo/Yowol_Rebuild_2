@@ -43,7 +43,7 @@ namespace Yowol.EditorTools
 
         // ------------------------------------------------------------------ helpers
 
-        static void EnsureFolder(string path)
+        internal static void EnsureFolder(string path)
         {
             path = path.Replace('\\', '/');
             if (AssetDatabase.IsValidFolder(path)) return;
@@ -311,7 +311,7 @@ namespace Yowol.EditorTools
 
         // ------------------------------------------------------------------ prefabs
 
-        static Material Mat(string name) => AssetDatabase.LoadAssetAtPath<Material>(UrpMat + name);
+        internal static Material Mat(string name) => AssetDatabase.LoadAssetAtPath<Material>(UrpMat + name);
 
         static PhysicsMaterial2D NoFriction()
         {
@@ -340,7 +340,7 @@ namespace Yowol.EditorTools
             return (root, anim);
         }
 
-        static Light2D AddPointLight(Transform parent, Vector3 local, Color color, float radius, float intensity)
+        internal static Light2D AddPointLight(Transform parent, Vector3 local, Color color, float radius, float intensity)
         {
             var go = new GameObject("Light");
             go.transform.SetParent(parent, false);
@@ -417,14 +417,14 @@ namespace Yowol.EditorTools
 
         // ------------------------------------------------------------------ shared assets
 
-        static T Load<T>(string path) where T : Object
+        internal static T Load<T>(string path) where T : Object
         {
             var a = AssetDatabase.LoadAssetAtPath<T>(path);
             if (a == null) Debug.LogWarning($"[YowolBuilder] missing {typeof(T).Name} at {path}");
             return a;
         }
 
-        static Sprite SpriteAt(string path)
+        internal static Sprite SpriteAt(string path)
         {
             var imp = AssetImporter.GetAtPath(path) as TextureImporter;
             if (imp != null && imp.textureType != TextureImporterType.Sprite)
@@ -438,7 +438,7 @@ namespace Yowol.EditorTools
             return s;
         }
 
-        static Sprite ImportSingle(string path, float ppu, Vector2 pivot, bool repeat)
+        internal static Sprite ImportSingle(string path, float ppu, Vector2 pivot, bool repeat)
         {
             var imp = (TextureImporter)AssetImporter.GetAtPath(path);
             if (imp == null) { Debug.LogWarning("[YowolBuilder] missing " + path); return null; }
@@ -529,20 +529,21 @@ namespace Yowol.EditorTools
                 BuildStage2(),
                 BuildBossStage(),
             };
-            EditorBuildSettings.scenes = new[] { "Title", "Intro", "Stage1", "Stage2", "BossStage" }
+            report.Add(Stage3Builder.BuildScene(false));
+            EditorBuildSettings.scenes = new[] { "Title", "Intro", "Stage1", "Stage2", "Stage3", "BossStage" }
                 .Select(n => new EditorBuildSettingsScene($"{SceneRoot}/{n}.unity", true)).ToArray();
-            report.Add("Build list: Title > Intro > Stage1 > Stage2 > BossStage");
+            report.Add("Build list: Title > Intro > Stage1 > Stage2 > Stage3 > BossStage");
             return string.Join("\n", report);
         }
 
-        static Scene NewScene(string name)
+        internal static Scene NewScene(string name)
         {
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             scene.name = name;
             return scene;
         }
 
-        static Camera MakeCamera(float size, Color bg)
+        internal static Camera MakeCamera(float size, Color bg)
         {
             var go = new GameObject("Main Camera") { tag = "MainCamera" };
             var cam = go.AddComponent<Camera>();
@@ -575,7 +576,7 @@ namespace Yowol.EditorTools
             return p;
         }
 
-        static void AddVolume()
+        internal static void AddVolume()
         {
             var go = new GameObject("Global Volume");
             var v = go.AddComponent<Volume>();
@@ -583,7 +584,7 @@ namespace Yowol.EditorTools
             v.sharedProfile = GameVolumeProfile();
         }
 
-        static Light2D AddGlobalLight(Color color, float intensity)
+        internal static Light2D AddGlobalLight(Color color, float intensity)
         {
             var go = new GameObject("Global Light 2D");
             var l = go.AddComponent<Light2D>();
@@ -593,13 +594,13 @@ namespace Yowol.EditorTools
             return l;
         }
 
-        static void Save(Scene scene, string name)
+        internal static void Save(Scene scene, string name)
         {
             EnsureFolder(SceneRoot);
             EditorSceneManager.SaveScene(scene, $"{SceneRoot}/{name}.unity");
         }
 
-        static GameObject Empty(string name, Vector3 pos, Transform parent = null)
+        internal static GameObject Empty(string name, Vector3 pos, Transform parent = null)
         {
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
@@ -607,21 +608,21 @@ namespace Yowol.EditorTools
             return go;
         }
 
-        static void Wall(string name, Vector2 center, Vector2 size)
+        internal static void Wall(string name, Vector2 center, Vector2 size)
         {
             var go = Empty(name, center);
             go.layer = Layers.Ground;
             go.AddComponent<BoxCollider2D>().size = size;
         }
 
-        static void Kill(Vector2 center, Vector2 size)
+        internal static void Kill(Vector2 center, Vector2 size)
         {
             var go = Empty("KillZone", center);
             var b = go.AddComponent<BoxCollider2D>(); b.isTrigger = true; b.size = size;
             go.AddComponent<KillZone>();
         }
 
-        static StageExit Exit(Vector2 groundPoint, string[] lines)
+        internal static StageExit Exit(Vector2 groundPoint, string[] lines)
         {
             var go = Empty("StageExit", groundPoint);
             var b = go.AddComponent<BoxCollider2D>(); b.isTrigger = true; b.size = new Vector2(1.6f, 4f); b.offset = new Vector2(0, 2f);
@@ -641,7 +642,7 @@ namespace Yowol.EditorTools
             return exit;
         }
 
-        static void Trigger(Vector2 center, Vector2 size, string[] lines)
+        internal static void Trigger(Vector2 center, Vector2 size, string[] lines)
         {
             var go = Empty("GuideTrigger", center);
             var b = go.AddComponent<BoxCollider2D>(); b.isTrigger = true; b.size = size;
@@ -660,7 +661,7 @@ namespace Yowol.EditorTools
             }
         }
 
-        static GameObject GuideSpiritObject(Vector3 pos)
+        internal static GameObject GuideSpiritObject(Vector3 pos)
         {
             var go = Empty("Guide_GrayFire", pos);
             var sr = go.AddComponent<SpriteRenderer>();
@@ -766,7 +767,7 @@ namespace Yowol.EditorTools
             return "Scene Intro: 13 panels";
         }
 
-        static StageController MakeStageController(string title, string sub, Vector3 spawn, Rect bounds, float camSize)
+        internal static StageController MakeStageController(string title, string sub, Vector3 spawn, Rect bounds, float camSize)
         {
             var go = new GameObject("StageController");
             var sc = go.AddComponent<StageController>();
