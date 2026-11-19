@@ -34,6 +34,8 @@ namespace Yowol
 
         PlayerController pc;
         Health health;
+        HitFlash flash;
+        bool windupTinted;
         SpriteAnimator anim;
         Rigidbody2D rb;
         Coroutine action;
@@ -53,6 +55,7 @@ namespace Yowol
             pc = GetComponent<PlayerController>();
             health = GetComponent<Health>();
             rb = GetComponent<Rigidbody2D>();
+            flash = GetComponent<HitFlash>();
             anim = pc.anim;
             weaponIndex = Mathf.Clamp(RunState.WeaponIndex, 0, weapons.Length - 1);
             health.Intercept = ParryIntercept;
@@ -131,6 +134,7 @@ namespace Yowol
             OverrideVelocityX = null;
             parryActive = false;
             health.Invulnerable = false;
+            if (windupTinted) { flash?.SetBaseColor(Color.white); windupTinted = false; }
         }
 
         /// <summary>Called when the player is hit or dies.</summary>
@@ -154,6 +158,27 @@ namespace Yowol
 
         float ClipLength(string clip) => anim.LengthOf(clip);
 
+        // ---------------------------------------------------------------- skill FX scale (GameTuning.json → "skillFx")
+
+        /// <summary>Visual size multiplier for E/Q skill effects (1.2 = 120%).</summary>
+        static float FxS => GameTuning.Data.skillFx.scale;
+        /// <summary>Hit-box multiplier for E/Q skills (kept separate so visuals can grow without changing balance).</summary>
+        static float HbS => GameTuning.Data.skillFx.hitboxScale;
+
+        static Fx SkillFx(string clip, Vector3 position, bool flipX = false, float scale = 1f, float rotation = 0f,
+                          Color? color = null, int order = Fx.DefaultOrder, Transform parent = null, float lifetime = -1f)
+            => Fx.Play(clip, position, flipX, scale * FxS, rotation, color, order, parent, lifetime);
+
+        static void SkillFlash(Vector3 position, Color color, float radius, float intensity, float duration)
+            => Fx.Flash(position, color, radius * FxS, intensity, duration);
+
+        /// <summary>Projectile.Spawn with the skill scale. Its hitSize is multiplied by the spawn scale,
+        /// so set it through <see cref="SkillHitSize"/> to keep the hit area independent of the visual.</summary>
+        static Projectile SkillProjectile(string clip, Vector3 position, Vector2 velocity, int damage, int mask, float scale)
+            => Projectile.Spawn(clip, position, velocity, damage, mask, scale * FxS);
+
+        static Vector2 SkillHitSize(Vector2 size) => size * (HbS / FxS);
+
         void OnEnemyHit(Health target, Vector2 point, bool heavy)
         {
             Fx.Play("SwordHit", point, Random.value > 0.5f, heavy ? 0.9f : 0.6f, Random.Range(0f, 360f));
@@ -172,6 +197,28 @@ namespace Yowol
             BlocksJump = true;
             BlocksTurning = true;
             MoveMultiplier = w.moveWhileAttacking;
+
+            // Wind-up (기수 동작) before the swing — per weapon in GameTuning.json → "weapons"[].attackWindup
+            var wt = GameTuning.ForWeapon(w.id);
+            if (wt != null && wt.attackWindup > 0f && !(wt.windupFirstComboOnly && combo != 0))
+            {
+                anim.SetFrame(w.attackClip, wt.windupFrame);
+                MoveMultiplier = wt.windupMoveMultiplier;
+                for (float t0 = 0f; t0 < wt.attackWindup; t0 += Time.deltaTime)
+                {
+                    if (wt.windupTint && flash != null)
+                    {
+                        // Brightens toward the release so the timing is readable.
+                        float k = Mathf.Clamp01(t0 / wt.attackWindup);
+                        flash.SetBaseColor(Color.Lerp(Color.white, wt.windupColor, k * (0.6f + 0.4f * Mathf.PingPong(t0 * 10f, 1f))));
+                        windupTinted = true;
+                    }
+                    yield return null;
+                }
+                if (windupTinted) { flash.SetBaseColor(Color.white); windupTinted = false; }
+                MoveMultiplier = w.moveWhileAttacking;
+            }
+
             anim.Play(w.attackClip, true);
 
             AudioHub.Sfx(w.id == WeaponId.GreatSword ? GameAssets.I.sfxHeavySwing : GameAssets.I.sfxSwing, 0.7f);
@@ -258,7 +305,7 @@ namespace Yowol
             anim.SetFrame(w.attackClip, 0);
             yield return Wait(0.18f);
             Vector2 center = Front(1.8f, 1.1f);
-            var fx = Fx.Play("SwordFlurry", center, !pc.FacingRight, 1.0f, 0f, null, Fx.DefaultOrder, null, 0.8f);
+            var fx = SkillFx("SwordFlurry", center, !pc.FacingRight, 1.0f, 0f, null, Fx.DefaultOrder, null, 0.8f);
             if (fx != null) loopingFx.Add(fx);
             int hits = Mathf.Max(1, w.skill1Hits);
             float step = 0.63f / hits;
@@ -266,9 +313,9 @@ namespace Yowol
             {
                 anim.SetFrame(w.attackClip, i % 3);
                 var info = new DamageInfo { amount = w.skill1Damage, origin = transform.position, knockback = 0.6f, source = gameObject };
-                Combat.HitBox(center, new Vector2(3.2f, 2.6f), Layers.EnemyMask, info, null, (h, p) =>
+                Combat.HitBox(center, new Vector2(3.2f, 2.6f) * HbS, Layers.EnemyMask, info, null, (h, p) =>
                 {
-                    Fx.Play("SwordSpark", p, Random.value > 0.5f, 0.5f, Random.Range(0f, 360f));
+                    SkillFx("SwordSpark", p, Random.value > 0.5f, 0.5f, Random.Range(0f, 360f));
                     AudioHub.Sfx(GameAssets.I.sfxHit, 0.45f, 0.2f);
                 });
                 if (i % 2 == 0) AudioHub.Sfx(GameAssets.I.sfxSwing, 0.4f, 0.2f);
@@ -288,14 +335,14 @@ namespace Yowol
             health.GrantInvulnerability(0.5f);
             anim.Play(w.attackClip, true);
             yield return Wait(TimeToFrame(w.attackClip, 1));
-            var p = Projectile.Spawn("MoonSlash", Front(1.2f, 1.1f), new Vector2(pc.FacingSign * 12f, 0f), w.skill2Damage, Layers.EnemyMask, 1.6f);
+            var p = SkillProjectile("MoonSlash", Front(1.2f, 1.1f), new Vector2(pc.FacingSign * 12f, 0f), w.skill2Damage, Layers.EnemyMask, 1.6f);
             if (p != null)
             {
                 p.lifetime = 0.7f;
                 p.pierce = true;
                 p.hitsPerTarget = Mathf.Max(1, w.skill2Hits);
                 p.tickInterval = 0.1f;
-                p.hitSize = new Vector2(2.6f, 2.4f);
+                p.hitSize = SkillHitSize(new Vector2(2.6f, 2.4f));
                 p.knockback = 1f;
                 p.heavy = true;
                 p.stopOnGround = false;
@@ -304,7 +351,7 @@ namespace Yowol
                 p.hitSound = GameAssets.I.sfxHit;
                 p.owner = gameObject;
             }
-            Fx.Flash(Front(1.5f, 1.1f), new Color(0.5f, 0.85f, 1f), 6f, 2f, 0.35f);
+            SkillFlash(Front(1.5f, 1.1f), new Color(0.5f, 0.85f, 1f), 6f, 2f, 0.35f);
             CameraRig.Shake(0.25f, 0.2f);
             AudioHub.Sfx(GameAssets.I.sfxHeavySwing, 0.9f);
             yield return Wait(ClipLength(w.attackClip) - TimeToFrame(w.attackClip, 1) + 0.1f);
@@ -330,16 +377,16 @@ namespace Yowol
         IEnumerator ArrowRainDamage(Vector2 groundCenter, WeaponData w)
         {
             const float duration = 6f;
-            var ring = Fx.Play("MintRing", groundCenter + Vector2.up * 0.05f, false, 0.55f, 0f, null, 5, null, duration);
-            var rain = Fx.Play("ArrowRain", groundCenter + Vector2.up * 2.0f, false, 0.6f, 0f, new Color(1, 1, 1, 0.9f), Fx.DefaultOrder, null, duration);
+            var ring = SkillFx("MintRing", groundCenter + Vector2.up * 0.05f, false, 0.55f, 0f, null, 5, null, duration);
+            var rain = SkillFx("ArrowRain", groundCenter + Vector2.up * 2.0f * FxS, false, 0.6f, 0f, new Color(1, 1, 1, 0.9f), Fx.DefaultOrder, null, duration);
             int hits = Mathf.Max(1, w.skill1Hits);
             float step = duration / hits;
             yield return Wait(0.15f);
             for (int i = 0; i < hits; i++)
             {
                 var info = new DamageInfo { amount = w.skill1Damage, origin = groundCenter + Vector2.up * 4f, knockback = 0.2f, source = gameObject };
-                Combat.HitBox(groundCenter + Vector2.up * 1.6f, new Vector2(4.2f, 3.6f), Layers.EnemyMask, info, null,
-                    (h, p) => Fx.Play("SwordSpark", p, false, 0.35f, Random.Range(0f, 360f), new Color(0.6f, 1f, 0.85f)));
+                Combat.HitBox(groundCenter + Vector2.up * 1.6f * HbS, new Vector2(4.2f, 3.6f) * HbS, Layers.EnemyMask, info, null,
+                    (h, p) => SkillFx("SwordSpark", p, false, 0.35f, Random.Range(0f, 360f), new Color(0.6f, 1f, 0.85f)));
                 yield return Wait(step);
             }
         }
@@ -352,7 +399,7 @@ namespace Yowol
             SuspendGravity = !pc.IsGrounded;
             MoveMultiplier = 0f;
             anim.SetFrame(w.attackClip, 1);
-            var bow = Fx.Play("BowAppear", Front(1.1f, 1.3f), !pc.FacingRight, 0.6f);
+            var bow = SkillFx("BowAppear", Front(1.1f, 1.3f), !pc.FacingRight, 0.6f);
             if (bow != null) loopingFx.Add(bow);
             yield return Wait(0.45f);
             const float castTime = 2.2f;
@@ -361,15 +408,15 @@ namespace Yowol
             for (int i = 0; i < hits; i++)
             {
                 anim.SetFrame(w.attackClip, 2);
-                var visual = Projectile.Spawn("BowBeam", Front(1.6f, 1.15f + Random.Range(-0.25f, 0.25f)),
+                var visual = SkillProjectile("BowBeam", Front(1.6f, 1.15f + Random.Range(-0.25f, 0.25f)),
                                               new Vector2(pc.FacingSign * 30f, 0f), 0, 0, 0.9f);
                 if (visual != null) { visual.lifetime = 0.3f; visual.stopOnGround = false; }
                 var info = new DamageInfo { amount = w.skill2Damage, origin = transform.position, knockback = 0.8f, source = gameObject };
-                Combat.HitBox(Front(4.8f, 1.1f), new Vector2(8.5f, 2.8f), Layers.EnemyMask, info, null,
-                    (h, p) => Fx.Play("SwordHit", p, false, 0.5f, Random.Range(0f, 360f), new Color(0.7f, 1f, 0.9f)));
+                Combat.HitBox(Front(4.8f * HbS, 1.1f), new Vector2(8.5f, 2.8f) * HbS, Layers.EnemyMask, info, null,
+                    (h, p) => SkillFx("SwordHit", p, false, 0.5f, Random.Range(0f, 360f), new Color(0.7f, 1f, 0.9f)));
                 AudioHub.Sfx(GameAssets.I.sfxBow, 0.5f, 0.15f);
                 CameraRig.Shake(0.08f, 0.08f);
-                Fx.Flash(Front(1.5f, 1.2f), new Color(0.6f, 1f, 0.9f), 4f, 1.2f, 0.12f);
+                SkillFlash(Front(1.5f, 1.2f), new Color(0.6f, 1f, 0.9f), 4f, 1.2f, 0.12f);
                 yield return Wait(step);
             }
             anim.SetFrame(w.attackClip, 3);
@@ -385,7 +432,7 @@ namespace Yowol
             OwnsAnimation = BlocksMovement = BlocksJump = BlocksTurning = true;
             MoveMultiplier = 0f;
             anim.SetFrame(w.attackClip, 0);
-            var glint = Fx.Play("CrossWave", Front(0.5f, 1.2f), false, 0.5f, 0f, new Color(0.8f, 0.9f, 1f, 0.8f));
+            var glint = SkillFx("CrossWave", Front(0.5f, 1.2f), false, 0.5f, 0f, new Color(0.8f, 0.9f, 1f, 0.8f));
             parryActive = true;
             parrySucceeded = false;
             float until = Time.time + 0.5f;
@@ -400,14 +447,14 @@ namespace Yowol
             // Counter attack
             health.GrantInvulnerability(0.6f);
             HitStop.Do(0.12f);
-            Fx.Flash(transform.position + Vector3.up, Color.white, 6f, 2.5f, 0.3f);
+            SkillFlash(transform.position + Vector3.up, Color.white, 6f, 2.5f, 0.3f);
             anim.Play(w.attackClip, true);
             yield return Wait(TimeToFrame(w.attackClip, 2));
             Vector2 at = parryAttacker != null ? (Vector2)parryAttacker.transform.position + Vector2.up * 1f : Front(1.6f, 1.1f);
-            Fx.Play("CrossWave", at, false, 1.3f);
+            SkillFx("CrossWave", at, false, 1.3f);
             int dmg = Mathf.Max(60, parryIncoming * 2 + w.damage);
             var info = new DamageInfo { amount = dmg, origin = transform.position, knockback = 6f, heavy = true, source = gameObject };
-            Combat.HitCircle(at, 2.2f, Layers.EnemyMask, info, null, (h, p) => OnEnemyHit(h, p, true));
+            Combat.HitCircle(at, 2.2f * HbS, Layers.EnemyMask, info, null, (h, p) => OnEnemyHit(h, p, true));
             CameraRig.Shake(0.4f, 0.25f);
             AudioHub.Sfx(GameAssets.I.sfxHeavySwing, 1f);
             yield return Wait(0.25f);
@@ -419,7 +466,7 @@ namespace Yowol
             parrySucceeded = true;
             parryIncoming = info.amount;
             parryAttacker = info.source != null ? info.source.GetComponentInParent<Health>() : null;
-            Fx.Play("SwordHit", (Vector2)transform.position + new Vector2(pc.FacingSign * 0.6f, 1.2f), false, 0.9f);
+            SkillFx("SwordHit", (Vector2)transform.position + new Vector2(pc.FacingSign * 0.6f, 1.2f), false, 0.9f);
             AudioHub.Sfx(GameAssets.I.sfxHit, 1f);
             return true;
         }
@@ -446,8 +493,8 @@ namespace Yowol
             anim.Play(w.attackClip, true);
             anim.SetFrame(w.attackClip, 3);
             Vector2 ground = new Vector2(transform.position.x, transform.position.y);
-            Fx.Play("GreatSlam", ground + new Vector2(pc.FacingSign * 1.2f, 1.0f), !pc.FacingRight, 1.4f);
-            Fx.Flash(ground + Vector2.up, new Color(0.5f, 0.75f, 1f), 7f, 2.5f, 0.4f);
+            SkillFx("GreatSlam", ground + new Vector2(pc.FacingSign * 1.2f, 1.0f) * FxS, !pc.FacingRight, 1.4f);
+            SkillFlash(ground + Vector2.up, new Color(0.5f, 0.75f, 1f), 7f, 2.5f, 0.4f);
             AudioHub.Sfx(GameAssets.I.sfxExplosion, 0.9f);
             CameraRig.Shake(0.6f, 0.35f);
             int hits = Mathf.Max(1, w.skill2Hits);
@@ -456,7 +503,7 @@ namespace Yowol
             {
                 already.Clear();
                 var info = new DamageInfo { amount = w.skill2Damage, origin = ground, knockback = 2f, launch = 1.5f, heavy = true, source = gameObject };
-                Combat.HitCircle(ground + Vector2.up * 0.8f, 4f, Layers.EnemyMask, info, already, (h, p) => OnEnemyHit(h, p, true));
+                Combat.HitCircle(ground + Vector2.up * 0.8f, 4f * HbS, Layers.EnemyMask, info, already, (h, p) => OnEnemyHit(h, p, true));
                 yield return Wait(0.12f);
             }
             health.Invulnerable = false;

@@ -22,9 +22,15 @@ namespace Yowol
         Image hpFill; TextMeshProUGUI hpText;
         readonly Image[] weaponSlots = new Image[3];
         readonly Image[] weaponIcons = new Image[3];
+        // Skill slots (E / Q). Size, position and icons come from GameTuning.json ("hud", "weapons").
+        RectTransform skillRoot;
+        readonly Image[] skillIcons = new Image[2];
         readonly Image[] skillCooldown = new Image[2];
+        readonly TextMeshProUGUI[] skillKeys = new TextMeshProUGUI[2];
         readonly TextMeshProUGUI[] skillNames = new TextMeshProUGUI[2];
         readonly TextMeshProUGUI[] skillTimers = new TextMeshProUGUI[2];
+        WeaponData shownSkillWeapon;
+        bool weaponIconsApplied;
         RectTransform bossBar; Image bossFill; TextMeshProUGUI bossName; Health bossHealth;
         TextMeshProUGUI timerText, counterText;
         CanvasGroup banner; TextMeshProUGUI bannerTitle, bannerSub;
@@ -46,6 +52,8 @@ namespace Yowol
             return Instance;
         }
 
+        void OnEnable() => GameTuning.Reloaded += RebuildSkillHud;
+        void OnDisable() => GameTuning.Reloaded -= RebuildSkillHud;
         void OnDestroy() { if (Instance == this) Instance = null; }
 
         void Build()
@@ -72,31 +80,15 @@ namespace Yowol
                 var slot = UIBuild.Image("Weapon" + i, hud, a.slot, Color.white, new Vector2(0, 1), new Vector2(0, 1), new Vector2(44 + i * 92, -100), new Vector2(82, 82));
                 if (a.slot == null) slot.color = new Color(0, 0, 0, 0.5f);
                 weaponSlots[i] = slot;
+                // Icon sprite is filled in Update from GameTuning.json → weapons[].icon (see RefreshWeaponIcons).
                 weaponIcons[i] = UIBuild.Image("Icon", slot.transform, a.weaponIcons.Length > i ? a.weaponIcons[i] : null, Color.white,
-                                               new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(58, 58), true);
+                                               new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(66, 66), true);
                 var k = UIBuild.Text("Key", slot.transform, keys[i], 20, new Color(1, 1, 1, 0.85f), TextAlignmentOptions.TopLeft,
                                      new Vector2(0, 1), new Vector2(0, 1), new Vector2(6, -2), new Vector2(30, 30));
                 k.outlineWidth = 0.25f;
             }
 
-            string[] skillKeys = { "E", "Q" };
-            for (int i = 0; i < 2; i++)
-            {
-                var box = UIBuild.Image("Skill" + i, hud, a.slot, Color.white, new Vector2(1, 0), new Vector2(1, 0), new Vector2(-150 + i * 110, 40), new Vector2(96, 96));
-                if (a.slot == null) box.color = new Color(0, 0, 0, 0.5f);
-                var key = UIBuild.Text("Key", box.transform, skillKeys[i], 40, Color.white, TextAlignmentOptions.Center,
-                                       new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 6), new Vector2(90, 60), true);
-                key.outlineWidth = 0.2f;
-                skillCooldown[i] = UIBuild.Image("Cooldown", box.transform, a.white, new Color(0, 0, 0, 0.65f),
-                                                 new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(84, 84));
-                skillCooldown[i].type = Image.Type.Filled; skillCooldown[i].fillMethod = Image.FillMethod.Radial360;
-                skillCooldown[i].fillOrigin = (int)Image.Origin360.Top; skillCooldown[i].fillClockwise = false;
-                skillTimers[i] = UIBuild.Text("Timer", box.transform, "", 28, new Color(1f, 0.9f, 0.6f), TextAlignmentOptions.Center,
-                                              new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(90, 60));
-                skillNames[i] = UIBuild.Text("Name", box.transform, "", 18, new Color(1, 1, 1, 0.9f), TextAlignmentOptions.Center,
-                                             new Vector2(0.5f, 0), new Vector2(0.5f, 1), new Vector2(0, -4), new Vector2(140, 30));
-                skillNames[i].outlineWidth = 0.25f;
-            }
+            BuildSkillSlots();
 
             // ---------------- Boss bar
             bossBar = UIBuild.Rect("BossBar", root, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -40), new Vector2(1000, 70));
@@ -150,6 +142,103 @@ namespace Yowol
             victoryText = victoryPanel.transform.Find("Title").GetComponent<TextMeshProUGUI>();
         }
 
+        // ---------------------------------------------------------------- skill slots (E / Q)
+
+        /// <summary>
+        /// Builds the E/Q skill slots from GameTuning.json → "hud".
+        /// Called again by <see cref="RebuildSkillHud"/> when the tuning changes while playing.
+        /// </summary>
+        void BuildSkillSlots()
+        {
+            if (skillRoot != null) Destroy(skillRoot.gameObject);
+            var h = GameTuning.Data.hud;
+            var a = GameAssets.I;
+            skillRoot = UIBuild.Stretch("Skills", hud);
+            string[] keys = { "E", "Q" };
+            float slot = Mathf.Max(32f, h.skillSlotSize);
+            float icon = Mathf.Clamp(h.skillIconSize, 16f, slot);
+            for (int i = 0; i < 2; i++)
+            {
+                // E (i = 0) sits one spacing to the left of Q (i = 1).
+                var pos = new Vector2(h.skillOffset.x - (1 - i) * h.skillSlotSpacing, h.skillOffset.y);
+                var box = UIBuild.Image("Skill" + i, skillRoot, a.slot, Color.white, new Vector2(1, 0), new Vector2(1, 0), pos, new Vector2(slot, slot));
+                if (a.slot == null) box.color = new Color(0, 0, 0, 0.5f);
+
+                skillIcons[i] = UIBuild.Image("Icon", box.transform, null, Color.white,
+                                              new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(icon, icon), true);
+                skillIcons[i].enabled = false;
+
+                skillCooldown[i] = UIBuild.Image("Cooldown", box.transform, a.white, new Color(0, 0, 0, 0.65f),
+                                                 new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(icon * 0.94f, icon * 0.94f));
+                skillCooldown[i].type = Image.Type.Filled; skillCooldown[i].fillMethod = Image.FillMethod.Radial360;
+                skillCooldown[i].fillOrigin = (int)Image.Origin360.Top; skillCooldown[i].fillClockwise = false;
+
+                skillKeys[i] = UIBuild.Text("Key", box.transform, keys[i], h.keyFontSize, Color.white, TextAlignmentOptions.TopLeft,
+                                            new Vector2(0, 1), new Vector2(0, 1), new Vector2(8, -4), new Vector2(50, 44), true);
+                skillKeys[i].outlineWidth = 0.25f;
+
+                skillTimers[i] = UIBuild.Text("Timer", box.transform, "", h.timerFontSize, new Color(1f, 0.9f, 0.6f), TextAlignmentOptions.Center,
+                                              new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(slot, slot * 0.6f));
+                skillTimers[i].outlineWidth = 0.2f;
+
+                skillNames[i] = UIBuild.Text("Name", box.transform, "", h.nameFontSize, new Color(1, 1, 1, 0.9f), TextAlignmentOptions.Center,
+                                             new Vector2(0.5f, 0), new Vector2(0.5f, 1), new Vector2(0, -4), new Vector2(slot + 60f, 30));
+                skillNames[i].outlineWidth = 0.25f;
+                skillNames[i].enabled = h.showSkillName;
+            }
+            shownSkillWeapon = null;
+        }
+
+        /// <summary>Re-reads the HUD numbers / icons (used by the Game Tuning window while playing).</summary>
+        public void RebuildSkillHud()
+        {
+            if (hud == null) return;
+            BuildSkillSlots();
+            weaponIconsApplied = false;
+        }
+
+        void RefreshWeaponIcons(PlayerCombat combat)
+        {
+            for (int i = 0; i < weaponIcons.Length; i++)
+            {
+                var w = combat.weapons != null && i < combat.weapons.Length ? combat.weapons[i] : null;
+                var sprite = GameTuning.WeaponIcon(w, i);
+                weaponIcons[i].sprite = sprite;
+                weaponIcons[i].enabled = sprite != null;
+            }
+            weaponIconsApplied = true;
+        }
+
+        void RefreshSkillIcons(WeaponData w)
+        {
+            var h = GameTuning.Data.hud;
+            for (int i = 0; i < 2; i++)
+            {
+                var sprite = GameTuning.SkillIcon(w, i);
+                skillIcons[i].sprite = sprite;
+                skillIcons[i].enabled = sprite != null;
+                // With an icon the key letter sits small in the corner; without one it fills the slot like before.
+                var rt = skillKeys[i].rectTransform;
+                if (sprite != null)
+                {
+                    rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0, 1);
+                    rt.anchoredPosition = new Vector2(8, -4);
+                    rt.sizeDelta = new Vector2(50, 44);
+                    skillKeys[i].alignment = TextAlignmentOptions.TopLeft;
+                    skillKeys[i].fontSize = h.keyFontSize;
+                }
+                else
+                {
+                    rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+                    rt.anchoredPosition = new Vector2(0, 6);
+                    rt.sizeDelta = new Vector2(h.skillSlotSize, h.skillSlotSize * 0.6f);
+                    skillKeys[i].alignment = TextAlignmentOptions.Center;
+                    skillKeys[i].fontSize = h.keyFontSize * 1.6f;
+                }
+            }
+            shownSkillWeapon = w;
+        }
+
         GameObject Panel(Transform root, string title, (string, Action)[] buttons)
         {
             var p = UIBuild.Stretch("Panel_" + title, root);
@@ -183,6 +272,7 @@ namespace Yowol
                 hpFill.fillAmount = shownHp;
                 hpText.text = $"{h.Current} / {h.max}";
                 var combat = pc.GetComponent<PlayerCombat>();
+                if (!weaponIconsApplied) RefreshWeaponIcons(combat);
                 for (int i = 0; i < 3; i++)
                 {
                     bool sel = combat.weaponIndex == i;
@@ -191,11 +281,14 @@ namespace Yowol
                     weaponIcons[i].color = sel ? Color.white : new Color(1, 1, 1, 0.45f);
                 }
                 var w = combat.Weapon;
+                if (w != shownSkillWeapon) RefreshSkillIcons(w);
+                float dim = GameTuning.Data.hud.cooldownIconBrightness;
                 for (int i = 0; i < 2; i++)
                 {
                     float ratio = combat.CooldownRatio(i);
                     float rem = combat.CooldownRemaining(i);
                     skillCooldown[i].fillAmount = ratio;
+                    skillIcons[i].color = ratio > 0f ? new Color(dim, dim, dim, 1f) : Color.white;
                     skillTimers[i].text = rem > 0.05f ? Mathf.CeilToInt(rem).ToString() : "";
                     skillNames[i].text = i == 0 ? w.skill1Name : w.skill2Name;
                 }

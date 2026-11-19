@@ -48,6 +48,9 @@ namespace Yowol
         public Rigidbody2D Body => rb;
         public Health Health => health;
         public float LastGroundY { get; private set; }
+        /// <summary>Standing on a slanted surface (Stage3 ramps). Movement follows the slope and the player doesn't slide.</summary>
+        public bool OnSlope { get; private set; }
+        public Vector2 GroundNormal { get; private set; } = Vector2.up;
 
         Rigidbody2D rb;
         Health health;
@@ -102,8 +105,19 @@ namespace Yowol
         {
             if (IsDead) return;
 
-            bool groundedNow = Physics2D.OverlapBox((Vector2)transform.position + Vector2.up * groundCheckOffsetY,
-                                                    groundCheckSize, 0f, Layers.GroundMask) != null && rb.linearVelocity.y <= 0.1f;
+            // Slope probe: walking up a ramp gives a positive vertical speed, which must still count as grounded.
+            var slopeHit = Physics2D.Raycast((Vector2)transform.position + Vector2.up * 0.4f, Vector2.down, 1.0f, Layers.GroundMask);
+            float slopeAngle = slopeHit.collider != null ? Vector2.Angle(slopeHit.normal, Vector2.up) : 0f;
+            OnSlope = slopeHit.collider != null && slopeAngle > 5f && slopeAngle < 55f;
+            GroundNormal = OnSlope ? slopeHit.normal : Vector2.up;
+            float maxGroundedVy = OnSlope ? Mathf.Abs(rb.linearVelocity.x) * Mathf.Tan(slopeAngle * Mathf.Deg2Rad) + 0.6f : 0.1f;
+            var groundCol = Physics2D.OverlapBox((Vector2)transform.position + Vector2.up * groundCheckOffsetY,
+                                                 groundCheckSize, 0f, Layers.GroundMask);
+            // On a moving platform (Stage3 lift) compare against the platform's own vertical speed.
+            var platform = groundCol != null ? groundCol.GetComponent<MovingPlatform>() : null;
+            float baseVy = platform != null ? Mathf.Max(0f, platform.Velocity.y) : 0f;
+            bool groundedNow = groundCol != null && rb.linearVelocity.y - baseVy <= maxGroundedVy + (platform != null ? 0.6f : 0f);
+            if (!groundedNow) OnSlope = false;
             IsGrounded = groundedNow;
             if (IsGrounded)
             {
@@ -161,7 +175,16 @@ namespace Yowol
                 v.x = Mathf.MoveTowards(v.x, target, a * dt);
             }
 
-            if (combat != null && combat.SuspendGravity)
+            bool slopeStick = OnSlope && IsGrounded && !IsDead && Time.time >= hurtUntil &&
+                              (combat == null || !combat.SuspendGravity) && v.y <= Mathf.Abs(v.x) * 0.75f + 0.6f;
+            if (slopeStick)
+            {
+                // Move along the ramp surface with no gravity, so the player neither slides down nor bounces off.
+                rb.gravityScale = 0f;
+                Vector2 n = GroundNormal;
+                v = new Vector2(v.x, -v.x * n.x / Mathf.Max(0.2f, n.y));
+            }
+            else if (combat != null && combat.SuspendGravity)
             {
                 rb.gravityScale = 0f;
                 v.y = Mathf.MoveTowards(v.y, 0f, 60f * dt);

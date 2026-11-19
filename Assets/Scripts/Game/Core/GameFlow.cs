@@ -3,15 +3,16 @@ using UnityEngine.SceneManagement;
 
 namespace Yowol
 {
-    /// <summary>Scene order and transitions: Title > Intro > Stage1 > Stage2 > BossStage.</summary>
+    /// <summary>Scene order and transitions: Title > Intro > Stage1 > Stage2 > Stage3 > BossStage.</summary>
     public static class GameFlow
     {
         public const string Title = "Title";
         public const string Intro = "Intro";
         public const string Stage1 = "Stage1";
         public const string Stage2 = "Stage2";
+        public const string Stage3 = "Stage3";
         public const string BossStage = "BossStage";
-        public static readonly string[] Order = { Title, Intro, Stage1, Stage2, BossStage };
+        public static readonly string[] Order = { Title, Intro, Stage1, Stage2, Stage3, BossStage };
 
         const string ContinueKey = "yowol.continueScene";
 
@@ -35,7 +36,7 @@ namespace Yowol
         {
             if (scene == "Continue") scene = PlayerPrefs.GetString(ContinueKey, Stage1);
             if (scene == "MainStageSecen") scene = Intro;          // legacy name used by old buttons
-            if (scene == Stage1 || scene == Stage2 || scene == BossStage)
+            if (scene == Stage1 || scene == Stage2 || scene == Stage3 || scene == BossStage)
             {
                 PlayerPrefs.SetString(ContinueKey, scene);
                 PlayerPrefs.Save();

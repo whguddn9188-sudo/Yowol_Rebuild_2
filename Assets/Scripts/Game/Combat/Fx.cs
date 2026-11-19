@@ -19,10 +19,17 @@ namespace Yowol
                               Transform parent = null, float lifetime = -1f, float speed = 1f)
         {
             var assets = GameAssets.I;
-            if (assets == null || assets.fx == null || assets.fx.Get(clip) == null)
+            if (assets == null) return null;
+            // Built-in FX library first, then clips defined in GameTuning.json (library "FX").
+            var library = assets.fx;
+            if (library == null || library.Get(clip) == null)
             {
-                Debug.LogWarning($"[Fx] Unknown effect '{clip}'");
-                return null;
+                library = RuntimeAnims.Library("FX");
+                if (library.Get(clip) == null)
+                {
+                    Debug.LogWarning($"[Fx] Unknown effect '{clip}'");
+                    return null;
+                }
             }
             var go = new GameObject("FX_" + clip);
             go.transform.SetParent(parent, true);
@@ -34,7 +41,7 @@ namespace Yowol
             sr.sortingOrder = order;
             sr.color = color ?? Color.white;
             var anim = go.AddComponent<SpriteAnimator>();
-            anim.library = assets.fx;
+            anim.library = library;
             anim.speed = speed;
             var fx = go.AddComponent<Fx>();
             fx.anim = anim;

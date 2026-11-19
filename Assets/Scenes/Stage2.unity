@@ -1428,8 +1428,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Yowol.StageExit
   enterLines:
-  - "\uC625\uC0C1\uC73C\uB85C \uC62C\uB77C\uAC00\uC8E0."
-  - "\uAC01\uC624\uB294 \uB418\uC168\uB098\uC694, \uCC3D\uC870\uC790\uB2D8?"
+  - "\uC774 \uAC74\uBB3C \uB4A4\uD3B8\uC740 \uBB34\uB108\uC9C4 \uACF5\uC7A5 \uC9C0\uB300\uB85C \uC774\uC5B4\uC838\uC694."
+  - "\uBC1C\uBC11\uC744 \uC870\uC2EC\uD558\uBA74\uC11C \uAC00\uC8E0."
   lockedMessage: "\uB0A8\uC740 \uC801\uC744 \uBAA8\uB450 \uCC98\uCE58\uD558\uC138\uC694"
   glow: {fileID: 113161457}
   lightSource: {fileID: 1532311705}
@@ -4093,6 +4093,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Yowol.KillZone
   damage: 15
+  instantKill: 0
 --- !u!61 &975958031
 BoxCollider2D:
   m_ObjectHideFlags: 0
